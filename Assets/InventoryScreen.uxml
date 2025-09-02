@@ -1,0 +1,8 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
+    <ui:VisualElement name="root" style="flex-grow: 1;">
+        <ui:VisualElement name="PlacementPanel" style="flex-grow: 1; position: absolute; left: 50%; top: 50%; transition-property: all; transition-duration: 0s; transition-timing-function: ease; transition-delay: 0s; translate: -50% -50%; width: 200px; height: 300px; -unity-background-image-tint-color: rgb(255, 153, 153); background-color: rgba(243, 122, 122, 0.51);">
+            <ui:VisualElement name="itemsContainer" style="flex-grow: 1;" />
+        </ui:VisualElement>
+        <ui:Label tabindex="-1" text="Label" parse-escape-sequences="true" display-tooltip-when-elided="true" name="inventoryLabel" style="font-size: 50px;" />
+    </ui:VisualElement>
+</ui:UXML>
