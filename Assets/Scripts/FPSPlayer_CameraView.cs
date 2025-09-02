@@ -4,9 +4,19 @@ using UnityEngine;
 public class FPSPlayer_CameraView : MonoBehaviour
 {
     [Header("References")]
-    public Camera playerCamera; // child camera (assign in inspector)
-    public PlayerInventory inventory; // PlayerInventory script
-    public Animator characterAnimator; // Character's Animator component
+    public Camera playerCamera;
+    public PlayerInventory inventory;
+    public Animator characterAnimator;
+    public Transform playerModel; // The actual character model
+    public Transform cameraPivot; // This is the new camera pivot transform
+
+    [Header("Camera")]
+    public Vector3 cameraOffset = new Vector3(0, 1.8f, -2.5f);
+    public bool lookAtPlayer = false;
+    [Tooltip("Distance behind player when looking at them")]
+    public float lookAtDistance = 3f;
+    [Tooltip("How fast the camera follows the player")]
+    public float cameraSmoothTime = 0.1f;
 
     [Header("Mouse / Camera")]
     public float mouseSensitivity = 100f;
@@ -22,32 +32,32 @@ public class FPSPlayer_CameraView : MonoBehaviour
     public float runSpeed = 5f;
     public float jumpHeight = 2f;
     public float gravityMultiplier = 2f;
-    [Range(0f, 1f)] public float airControl = 0.3f;
+    public float acceleration = 5f;
+    [Tooltip("Speed at which player rotates to face movement direction")]
+    public float rotationSpeed = 10f;
 
     [Header("Input")]
     public KeyCode toggleCursorKey = KeyCode.Escape;
-    public KeyCode runKey = KeyCode.LeftShift;
     public KeyCode jumpKey = KeyCode.Space;
     public KeyCode pickupKey = KeyCode.F;
+    public KeyCode lookAtPlayerKey = KeyCode.V;
 
     [Header("Ground Check")]
     public Transform groundCheck;
     public float groundDistance = 0.2f;
-    public LayerMask groundMask = ~0; // defaults to everything
-
-    [Header("Behavior")]
-    [Tooltip("If true, the Player GameObject will rotate to match camera yaw. Leave OFF to rotate camera only.")]
-    public bool rotatePlayerWithCameraYaw = false;
+    public LayerMask groundMask = ~0;
 
     // internal
     private CharacterController controller;
-    private float pitch = 0f; // up/down
-    private float yaw = 0f;    // left/right
+    private float pitch = 0f;
+    private float yaw = 0f;
     private float pitchVel = 0f;
     private float yawVel = 0f;
     private Vector3 velocity;
     private bool isGrounded;
     private bool isCursorLocked = true;
+    private float smoothY;
+    private Vector3 cameraFollowVelocity = Vector3.zero;
 
     void Start()
     {
@@ -70,9 +80,10 @@ public class FPSPlayer_CameraView : MonoBehaviour
             }
         }
 
-        yaw = playerCamera.transform.localEulerAngles.y;
-        pitch = playerCamera.transform.localEulerAngles.x;
-        if (pitch > 180f) pitch -= 360f;
+        if (playerModel == null)
+        {
+            playerModel = transform;
+        }
 
         if (groundCheck == null)
         {
@@ -83,21 +94,52 @@ public class FPSPlayer_CameraView : MonoBehaviour
             groundCheck = gc.transform;
         }
 
+        // Detach the camera from the player in the hierarchy
+        if (playerCamera.transform.parent != null)
+        {
+            playerCamera.transform.parent = null;
+        }
+
         LockCursor();
     }
 
     void Update()
     {
         HandleCursorToggle();
+        HandleLookAtToggle();
         if (!isCursorLocked) return;
 
         HandleMouseLook();
-        HandleMovement();
+        HandleMovementAndAnimation();
         HandlePickup();
+    }
+
+    void LateUpdate()
+    {
+        // Smoothly follow the player's position
+        playerCamera.transform.position = Vector3.SmoothDamp(playerCamera.transform.position, playerModel.position + cameraOffset, ref cameraFollowVelocity, cameraSmoothTime);
+
+        if (lookAtPlayer)
+        {
+            Vector3 behindPlayer = playerModel.position - playerModel.forward * lookAtDistance;
+            behindPlayer.y = playerModel.position.y + cameraOffset.y;
+            playerCamera.transform.position = Vector3.SmoothDamp(playerCamera.transform.position, behindPlayer, ref cameraFollowVelocity, cameraSmoothTime);
+            playerCamera.transform.LookAt(playerModel.position + Vector3.up * 1f);
+        }
+    }
+
+    void HandleLookAtToggle()
+    {
+        if (Input.GetKeyDown(lookAtPlayerKey))
+        {
+            lookAtPlayer = !lookAtPlayer;
+        }
     }
 
     void HandleMouseLook()
     {
+        if (lookAtPlayer) return;
+
         float mx = Input.GetAxis("Mouse X");
         float my = Input.GetAxis("Mouse Y");
         if (invertY) my = -my;
@@ -108,46 +150,21 @@ public class FPSPlayer_CameraView : MonoBehaviour
         pitch -= my * scale;
         pitch = Mathf.Clamp(pitch, minVerticalAngle, maxVerticalAngle);
 
-        if (rotatePlayerWithCameraYaw)
+        if (enableSmoothing)
         {
-            if (enableSmoothing)
-            {
-                float smoothedYaw = Mathf.SmoothDampAngle(transform.eulerAngles.y, yaw, ref yawVel, smoothTime);
-                transform.rotation = Quaternion.Euler(0f, smoothedYaw, 0f);
-
-                float currentCamPitch = playerCamera.transform.localEulerAngles.x;
-                if (currentCamPitch > 180f) currentCamPitch -= 360f;
-                float smoothedPitch = Mathf.SmoothDampAngle(currentCamPitch, pitch, ref pitchVel, smoothTime);
-                playerCamera.transform.localRotation = Quaternion.Euler(smoothedPitch, 0f, 0f);
-            }
-            else
-            {
-                transform.rotation = Quaternion.Euler(0f, yaw, 0f);
-                playerCamera.transform.localRotation = Quaternion.Euler(pitch, 0f, 0f);
-            }
+            float smoothedYaw = Mathf.SmoothDampAngle(playerCamera.transform.localEulerAngles.y, yaw, ref yawVel, smoothTime);
+            float currentCamPitch = playerCamera.transform.localEulerAngles.x;
+            if (currentCamPitch > 180f) currentCamPitch -= 360f;
+            float smoothedPitch = Mathf.SmoothDampAngle(currentCamPitch, pitch, ref pitchVel, smoothTime);
+            playerCamera.transform.localRotation = Quaternion.Euler(smoothedPitch, smoothedYaw, 0f);
         }
         else
         {
-            if (enableSmoothing)
-            {
-                float currentLocalYaw = playerCamera.transform.localEulerAngles.y;
-                if (currentLocalYaw > 180f) currentLocalYaw -= 360f;
-                float smoothYaw = Mathf.SmoothDampAngle(currentLocalYaw, yaw, ref yawVel, smoothTime);
-
-                float currentCamPitch = playerCamera.transform.localEulerAngles.x;
-                if (currentCamPitch > 180f) currentCamPitch -= 360f;
-                float smoothPitch = Mathf.SmoothDampAngle(currentCamPitch, pitch, ref pitchVel, smoothTime);
-
-                playerCamera.transform.localRotation = Quaternion.Euler(smoothPitch, smoothYaw, 0f);
-            }
-            else
-            {
-                playerCamera.transform.localRotation = Quaternion.Euler(pitch, yaw, 0f);
-            }
+            playerCamera.transform.localRotation = Quaternion.Euler(pitch, yaw, 0f);
         }
     }
 
-    void HandleMovement()
+    void HandleMovementAndAnimation()
     {
         isGrounded = Physics.CheckSphere(groundCheck.position, groundDistance, groundMask, QueryTriggerInteraction.Ignore);
         if (isGrounded && velocity.y < 0f) velocity.y = -2f;
@@ -155,8 +172,24 @@ public class FPSPlayer_CameraView : MonoBehaviour
         float h = Input.GetAxisRaw("Horizontal");
         float v = Input.GetAxisRaw("Vertical");
 
-        characterAnimator.SetFloat("X", h);
-        characterAnimator.SetFloat("Y", v);
+        Vector3 inputDirection = new Vector3(h, 0f, v).normalized;
+        float inputMagnitude = inputDirection.magnitude;
+
+        // Animate the blend tree based on the normalized input direction and magnitude
+        characterAnimator.SetFloat("X", inputDirection.x);
+
+        float targetY = (v > 0) ? 2f : 0f;
+        smoothY = Mathf.Lerp(smoothY, targetY, acceleration * Time.deltaTime);
+
+        if (targetY == 0f && Mathf.Abs(smoothY) < 0.01f)
+        {
+            smoothY = 0f;
+        }
+
+        characterAnimator.SetFloat("Y", smoothY);
+        characterAnimator.SetFloat("Magnitude", inputMagnitude);
+
+        float targetSpeed = Mathf.Lerp(walkSpeed, runSpeed, inputMagnitude);
 
         Vector3 camForward = playerCamera.transform.forward;
         camForward.y = 0f;
@@ -166,11 +199,19 @@ public class FPSPlayer_CameraView : MonoBehaviour
         camRight.y = 0f;
         camRight.Normalize();
 
-        Vector3 direction = (camRight * h + camForward * v);
-        if (direction.sqrMagnitude > 1f) direction.Normalize();
+        Vector3 moveDirection = (camForward * v + camRight * h);
 
-        float currentSpeed = Input.GetKey(runKey) ? runSpeed : walkSpeed;
-        Vector3 move = direction * currentSpeed * (isGrounded ? 1f : airControl);
+        // Rotate the player to face the direction of movement
+        if (moveDirection.magnitude > 0.1f)
+        {
+            Quaternion targetRotation = Quaternion.LookRotation(moveDirection);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, rotationSpeed * Time.deltaTime);
+        }
+
+        Vector3 currentVelocity = new Vector3(controller.velocity.x, 0, controller.velocity.z);
+        Vector3 targetVelocity = moveDirection.normalized * targetSpeed;
+
+        Vector3 move = Vector3.Lerp(currentVelocity, targetVelocity, acceleration * Time.deltaTime);
 
         if (Input.GetKeyDown(jumpKey) && isGrounded)
         {
