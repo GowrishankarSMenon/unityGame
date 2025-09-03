@@ -307,12 +307,12 @@ public class LevitateSpell : MonoBehaviour
         heldObjectRigidbody = rb;
 
         isHoldingObject = true;
-        heldOriginalDrag = heldObjectRigidbody.drag;
+        heldOriginalDrag = heldObjectRigidbody.linearDamping;
         heldOriginalCollisionMode = heldObjectRigidbody.collisionDetectionMode;
         heldOriginalInterpolation = heldObjectRigidbody.interpolation;
         heldObjectRigidbody.interpolation = RigidbodyInterpolation.Interpolate;
         heldObjectRigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-        heldObjectRigidbody.drag = heldDrag;
+        heldObjectRigidbody.linearDamping = heldDrag;
 
         holdAnchor = new GameObject("LevitateHoldAnchor");
         Vector3 targetPosition = playerCamera.transform.position + playerCamera.transform.forward * holdDistance;
@@ -362,7 +362,7 @@ public class LevitateSpell : MonoBehaviour
         }
         if (heldObjectRigidbody != null)
         {
-            heldObjectRigidbody.drag = heldOriginalDrag;
+            heldObjectRigidbody.linearDamping = heldOriginalDrag;
             heldObjectRigidbody.collisionDetectionMode = heldOriginalCollisionMode;
             heldObjectRigidbody.interpolation = heldOriginalInterpolation;
             heldObjectRigidbody.AddForce(playerCamera.transform.forward * throwForce, ForceMode.Impulse);

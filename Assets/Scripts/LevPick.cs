@@ -104,11 +104,11 @@ public class LevPick : MonoBehaviour
         heldObject = obj;
         heldRb = rb;
 
-        originalDrag = heldRb.drag;
+        originalDrag = heldRb.linearDamping;
         originalCollisionMode = heldRb.collisionDetectionMode;
         originalInterpolation = heldRb.interpolation;
 
-        heldRb.drag = heldDrag;
+        heldRb.linearDamping = heldDrag;
         heldRb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         heldRb.interpolation = RigidbodyInterpolation.Interpolate;
 
@@ -138,7 +138,7 @@ public class LevPick : MonoBehaviour
 
         if (heldRb != null)
         {
-            heldRb.drag = originalDrag;
+            heldRb.linearDamping = originalDrag;
             heldRb.collisionDetectionMode = originalCollisionMode;
             heldRb.interpolation = originalInterpolation;
 
