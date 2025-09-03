@@ -516,6 +516,8 @@ MonoBehaviour:
   _followCamera: {fileID: 963194227}
   _jumpHeight: 1
   _gravityValue: -9.81
+  mouseSensitivity: 2
+  invertY: 1
 --- !u!114 &750078809
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -531,7 +533,7 @@ MonoBehaviour:
   characterAnimator: {fileID: 1595190608}
   followCamera: {fileID: 963194227}
   chargeSpeed: 10
-  decaySpeed: 15
+  decaySpeed: 12
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
