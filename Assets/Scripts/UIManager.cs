@@ -1,43 +1,47 @@
 using UnityEngine;
 using UnityEngine.UIElements;
-using System.Collections;
 
 public class UIManager : MonoBehaviour
 {
-    // A reference to the UI Document we created in the scene.
-    public UIDocument uiDocument;
+    [Header("UI Documents")]
+    public UIDocument uiDocument;        // Inventory UI
+    public UIDocument crosshairDocument; // Crosshair UI
 
-    // A reference to the PlayerInventory script.
+    [Header("References")]
     public PlayerInventory playerInventory;
-
-    // The UXML element we created in the UI Builder.
-    private Label inventoryLabel;
-
     public PlacementUI placementUI;
+
+    private Label inventoryLabel;
+    private Label crosshairLabel;
 
     void Start()
     {
-        if (uiDocument == null) return;
-        placementUI.InitializeUI(uiDocument);
-        // Get the root visual element from the UI Document.
-        var root = uiDocument.rootVisualElement;
-
-        // Find the label we named in the UI Builder.
-        inventoryLabel = root.Q<Label>("inventoryLabel");
-
-        if (inventoryLabel == null)
+        // --- Inventory UI ---
+        if (uiDocument != null)
         {
-            Debug.LogError("Could not find 'inventoryLabel' in the UI Document.");
-            return;
+            placementUI.InitializeUI(uiDocument);
+
+            var root = uiDocument.rootVisualElement;
+            inventoryLabel = root.Q<Label>("inventoryLabel");
+
+            if (inventoryLabel == null)
+                Debug.LogError("Could not find 'inventoryLabel' in the UI Document.");
+            else
+                UpdateInventoryUI();
         }
 
-        // Update the UI at the start of the game.
-        UpdateInventoryUI();
+        // --- Crosshair UI ---
+        if (crosshairDocument != null)
+        {
+            var crosshairRoot = crosshairDocument.rootVisualElement;
+            crosshairLabel = crosshairRoot.Q<Label>("crosshairLabel");
+
+            if (crosshairLabel == null)
+                Debug.LogError("Could not find 'crosshairLabel' in Crosshair.uxml.");
+        }
     }
 
-    /// <summary>
-    /// This function is called to update the UI with the latest inventory information.
-    /// </summary>
+    // Updates the inventory
     public void UpdateInventoryUI()
     {
         if (inventoryLabel == null || playerInventory == null) return;
@@ -47,9 +51,7 @@ public class UIManager : MonoBehaviour
         if (playerInventory.items.Count > 0)
         {
             foreach (var item in playerInventory.items)
-            {
                 inventoryText += $"{item.Key}: {item.Value}\n";
-            }
         }
         else
         {
@@ -57,5 +59,19 @@ public class UIManager : MonoBehaviour
         }
 
         inventoryLabel.text = inventoryText;
+    }
+
+    // --- Crosshair Controls ---
+    public void ShowCrosshair(string text = "+")
+    {
+        if (crosshairLabel == null) return;
+        crosshairLabel.text = text;
+        crosshairLabel.style.display = DisplayStyle.Flex;
+    }
+
+    public void HideCrosshair()
+    {
+        if (crosshairLabel == null) return;
+        crosshairLabel.style.display = DisplayStyle.None;
     }
 }

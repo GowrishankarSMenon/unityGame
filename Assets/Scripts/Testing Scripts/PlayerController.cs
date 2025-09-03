@@ -18,14 +18,19 @@ public class PlayerController : MonoBehaviour
 
     [Header("Mouse Look Settings")]
     [SerializeField] private float mouseSensitivity = 2f;
-    [SerializeField] private bool invertY = false;  //  toggle Y axis
-    private float xRotation = 0f; // track vertical rotation
+    [SerializeField] private bool invertY = false;
+    private float xRotation = 0f;
 
     public bool IsTurning { get; set; } = false;
+
+    public System.Action OnJump;
+
+    private PlayerAnimationControl _animControl;
 
     private void Start()
     {
         _controller = GetComponent<CharacterController>();
+        _animControl = GetComponent<PlayerAnimationControl>();
         ToggleCursor(true);
     }
 
@@ -40,7 +45,6 @@ public class PlayerController : MonoBehaviour
             ToggleCursor(cursorLocked);
         }
 
-        // Example: press "I" to toggle invert Y
         if (Input.GetKeyDown(KeyCode.I))
         {
             invertY = !invertY;
@@ -49,16 +53,8 @@ public class PlayerController : MonoBehaviour
 
     public void ToggleCursor(bool lockCursor)
     {
-        if (lockCursor)
-        {
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
-        }
-        else
-        {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-        }
+        Cursor.lockState = lockCursor ? CursorLockMode.Locked : CursorLockMode.None;
+        Cursor.visible = !lockCursor;
     }
 
     void Movement()
@@ -72,21 +68,26 @@ public class PlayerController : MonoBehaviour
         float horizontalInput = Input.GetAxis("Horizontal");
         float verticalInput = Input.GetAxis("Vertical");
 
-        Vector3 movementInput = Quaternion.Euler(0, _followCamera.transform.eulerAngles.y, 0) * new Vector3(horizontalInput, 0, verticalInput);
-        Vector3 movementDirection = movementInput.normalized;
+        Vector3 movementInput = Quaternion.Euler(0, _followCamera.transform.eulerAngles.y, 0) *
+                                new Vector3(horizontalInput, 0, verticalInput);
         _movementDirection = movementInput.normalized;
 
-        _controller.Move(_playerSpeed * Time.deltaTime * _movementDirection);
+        // Apply animation-driven speed factor
+        float speedFactor = _animControl != null ? _animControl.CurrentSpeedFactor : 1f;
+        float finalSpeed = _playerSpeed * Mathf.Lerp(0.5f, 1.5f, speedFactor);
 
-        if (movementDirection != Vector3.zero && !IsTurning)
+        _controller.Move(finalSpeed * Time.deltaTime * _movementDirection);
+
+        if (_movementDirection != Vector3.zero && !IsTurning)
         {
-            Quaternion desiredRotation = Quaternion.LookRotation(movementDirection, Vector3.up);
+            Quaternion desiredRotation = Quaternion.LookRotation(_movementDirection, Vector3.up);
             transform.rotation = Quaternion.Slerp(transform.rotation, desiredRotation, _rotationSpeed * Time.deltaTime);
         }
 
         if (Input.GetButtonDown("Jump") && _groundedPlayer)
         {
             _playerVelocity.y += Mathf.Sqrt(_jumpHeight * -3.0f * _gravityValue);
+            OnJump?.Invoke();
         }
 
         _playerVelocity.y += _gravityValue * Time.deltaTime;
@@ -95,23 +96,19 @@ public class PlayerController : MonoBehaviour
 
     void MouseLook()
     {
-        if (!cursorLocked) return; // don’t move camera when cursor is unlocked
+        if (!cursorLocked) return;
 
         float mouseX = Input.GetAxis("Mouse X") * mouseSensitivity;
         float mouseY = Input.GetAxis("Mouse Y") * mouseSensitivity;
 
-        // Apply invert option
         if (invertY) mouseY = -mouseY;
 
         xRotation -= mouseY;
-        xRotation = Mathf.Clamp(xRotation, -80f, 80f); // stop looking too far up/down
+        xRotation = Mathf.Clamp(xRotation, -80f, 80f);
 
         _followCamera.transform.localRotation = Quaternion.Euler(xRotation, 0f, 0f);
         transform.Rotate(Vector3.up * mouseX);
     }
 
-    public Vector3 MovementDirection
-    {
-        get { return _movementDirection; }
-    }
+    public Vector3 MovementDirection => _movementDirection;
 }

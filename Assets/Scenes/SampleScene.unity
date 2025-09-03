@@ -372,12 +372,12 @@ GameObject:
   m_Component:
   - component: {fileID: 750078798}
   - component: {fileID: 750078800}
-  - component: {fileID: 750078802}
   - component: {fileID: 750078804}
   - component: {fileID: 750078805}
   - component: {fileID: 750078806}
   - component: {fileID: 750078808}
   - component: {fileID: 750078809}
+  - component: {fileID: 750078810}
   m_Layer: 0
   m_Name: Player
   m_TagString: Untagged
@@ -429,34 +429,6 @@ CharacterController:
   m_SkinWidth: 0.08
   m_MinMoveDistance: 0.001
   m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &750078802
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 750078797}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 32fff07305d44ec4a9b42da2f7cecbae, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  playerCamera: {fileID: 963194227}
-  glowMaterial: {fileID: 2100000, guid: 27670dc14e69e5b4fbea1ede6d963e8f, type: 2}
-  playerInventory: {fileID: 750078804}
-  itemDatabase: {fileID: 11400000, guid: 878c123234b92d94d95dc2dcd2d32c67, type: 2}
-  uiManager: {fileID: 750078805}
-  maxDistance: 5
-  holdDistance: 2
-  throwForce: 10
-  placementDistance: 3
-  heldDrag: 6
-  jointBreakForce: 10000
-  placementLayerMask:
-    serializedVersion: 2
-    m_Bits: 4294967295
-  previewMaterial: {fileID: 2100000, guid: 985871e4c12c44e4db51d50cf242abbb, type: 2}
-  selectedItemId: 
 --- !u!114 &750078804
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -483,6 +455,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   uiDocument: {fileID: 983747638}
+  crosshairDocument: {fileID: 0}
   playerInventory: {fileID: 750078804}
   placementUI: {fileID: 750078806}
 --- !u!114 &750078806
@@ -497,7 +470,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: aaa3db669e8e9b94e965cbc963482074, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  levitateSpell: {fileID: 750078802}
+  levitateSpell: {fileID: 0}
   playerInventory: {fileID: 750078804}
 --- !u!114 &750078808
 MonoBehaviour:
@@ -534,6 +507,40 @@ MonoBehaviour:
   followCamera: {fileID: 963194227}
   chargeSpeed: 10
   decaySpeed: 12
+--- !u!114 &750078810
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 750078797}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 32fff07305d44ec4a9b42da2f7cecbae, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerCamera: {fileID: 963194227}
+  glowMaterial: {fileID: 2100000, guid: 27670dc14e69e5b4fbea1ede6d963e8f, type: 2}
+  playerInventory: {fileID: 750078804}
+  itemDatabase: {fileID: 11400000, guid: 878c123234b92d94d95dc2dcd2d32c67, type: 2}
+  uiManager: {fileID: 750078805}
+  maxDistance: 5
+  holdDistance: 2
+  throwForce: 10
+  placementDistance: 3
+  levipickLayer:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  levipickTag: Levipick
+  requireTag: 1
+  heldDrag: 6
+  jointBreakForce: 10000
+  placementLayerMask:
+    serializedVersion: 2
+    m_Bits: 4294967295
+  previewMaterial: {fileID: 0}
+  debugMode: 0
+  selectedItemId: 
 --- !u!1 &963194225
 GameObject:
   m_ObjectHideFlags: 0
@@ -546,6 +553,7 @@ GameObject:
   - component: {fileID: 963194227}
   - component: {fileID: 963194226}
   - component: {fileID: 963194229}
+  - component: {fileID: 963194230}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -641,9 +649,28 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   _mouseSensitivity: 3
   _target: {fileID: 1747549119}
-  _distanceFromTarget: 3
+  _distanceFromTarget: 4.71
   _smoothTime: 0.2
   _rotationXMinMax: {x: -40, y: 40}
+--- !u!114 &963194230
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 963194225}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4421ded392567c54a9835698e8263b26, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  playerCamera: {fileID: 963194227}
+  crosshairUI: {fileID: 2000381235}
+  maxDistance: 10
+  holdDistance: 2
+  throwForce: 10
+  heldDrag: 6
+  jointBreakForce: 10000
 --- !u!1 &983747637
 GameObject:
   m_ObjectHideFlags: 0
@@ -912,6 +939,54 @@ Transform:
   m_Children: []
   m_Father: {fileID: 750078798}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2000381234
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2000381236}
+  - component: {fileID: 2000381235}
+  m_Layer: 5
+  m_Name: CrosshairUI
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &2000381235
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2000381234}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 19102, guid: 0000000000000000e000000000000000, type: 0}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_PanelSettings: {fileID: 11400000, guid: 1385197144d491e4a88687f7e357c343, type: 2}
+  m_ParentUI: {fileID: 0}
+  sourceAsset: {fileID: 9197481963319205126, guid: fa032d05f1fefa94aa196dab65665f79, type: 3}
+  m_SortingOrder: 0
+--- !u!4 &2000381236
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2000381234}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1001 &2132364971
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1043,3 +1118,4 @@ SceneRoots:
   - {fileID: 2132364971}
   - {fileID: 629607600}
   - {fileID: 5164542587189266801}
+  - {fileID: 2000381236}

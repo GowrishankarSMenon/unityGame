@@ -16,19 +16,24 @@ public class LevitateSpell : MonoBehaviour
     public float throwForce = 10f;
     public float placementDistance = 3f;
 
+    [Header("Interaction Settings")]
+    [Tooltip("Objects to consider for levipick (set to your Interactable/Levipick layer)")]
+    public LayerMask levipickLayer = ~0;
+    [Tooltip("If true, tries to find a parent tagged with this tag when raycast hits a child")]
+    public string levipickTag = "Levipick";
+    public bool requireTag = true;
+
     [Header("Joint / physics tuning")]
-    [Tooltip("How much extra drag to apply while object is held (helps stability).")]
     public float heldDrag = 6f;
-    [Tooltip("Break force for the joint (high to avoid accidental break).")]
     public float jointBreakForce = 10000f;
 
     [Header("Placement Settings")]
-    [Tooltip("Layer mask for surfaces where objects can be placed")]
     public LayerMask placementLayerMask = -1;
-    [Tooltip("Material to use for placement preview")]
     public Material previewMaterial;
 
-    [Header("Internal")]
+    [Header("Debug")]
+    public bool debugMode = false;
+
     private Dictionary<Renderer, Material[]> originalMaterials = new Dictionary<Renderer, Material[]>();
     private List<Renderer> currentHighlightedRenderers = new List<Renderer>();
 
@@ -46,52 +51,60 @@ public class LevitateSpell : MonoBehaviour
     private bool isPlacingMode = false;
     private GameObject placementPreview;
 
+    private Transform highlightedRoot = null;
+
     public string selectedItemId = "";
+
+    void Start()
+    {
+        if (playerCamera == null) playerCamera = Camera.main;
+        if (uiManager == null) uiManager = FindObjectOfType<UIManager>();
+    }
 
     void Update()
     {
-        // "C" key to toggle the placement UI
         if (Input.GetKeyDown(KeyCode.C))
         {
-            uiManager.placementUI.TogglePlacementPanel();
+            if (uiManager != null) uiManager.placementUI.TogglePlacementPanel();
         }
 
-        // This is the core logic loop. Only one branch can be active at a time.
         if (isPlacingMode)
         {
             UpdatePlacementPreview();
-            if (Input.GetMouseButtonDown(0))
-            {
-                PlaceObject();
-            }
-            if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.C))
-            {
-                ExitPlacementMode();
-            }
+
+            if (placementPreview != null && placementPreview.activeInHierarchy)
+                uiManager?.ShowCrosshair("[LMB] Place\n[RMB] Cancel");
+            else
+                uiManager?.HideCrosshair();
+
+            if (Input.GetMouseButtonDown(0)) PlaceObject();
+            if (Input.GetMouseButtonDown(1) || Input.GetKeyDown(KeyCode.C)) ExitPlacementMode();
         }
         else if (isHoldingObject)
         {
+            uiManager?.ShowCrosshair("[E] Drop");
             UpdateAnchorPosition();
-            if (Input.GetKeyDown(KeyCode.E))
-            {
-                DropObject();
-            }
+            if (Input.GetKeyDown(KeyCode.E)) DropObject();
         }
         else
         {
             HandleHighlighting();
-            if (currentHighlightedRenderers.Count > 0 && Input.GetKeyDown(KeyCode.E))
+
+            if (highlightedRoot != null)
             {
-                Transform rootObject = FindRootLevipickObject(currentHighlightedRenderers[0].transform);
-                if (rootObject != null)
+                uiManager?.ShowCrosshair("[E] Pick Up");
+                if (Input.GetKeyDown(KeyCode.E))
                 {
-                    PickUpObject(rootObject);
+                    PickUpObject(highlightedRoot);
                 }
+            }
+            else
+            {
+                uiManager?.HideCrosshair();
             }
         }
     }
 
-    // A new public method to manage the cursor state
     public void ToggleCursor(bool lockCursor)
     {
         if (lockCursor)
@@ -106,7 +119,6 @@ public class LevitateSpell : MonoBehaviour
         }
     }
 
-    // A new public method to start placement mode from the UI
     public void EnterPlacementMode(string itemId)
     {
         selectedItemId = itemId;
@@ -115,7 +127,6 @@ public class LevitateSpell : MonoBehaviour
         ToggleCursor(false);
     }
 
-    // A new public method to exit placement mode
     public void ExitPlacementMode()
     {
         isPlacingMode = false;
@@ -123,58 +134,30 @@ public class LevitateSpell : MonoBehaviour
         ToggleCursor(true);
     }
 
-    #region Placement Functions
     void StartPlacementPreview()
     {
-        if (string.IsNullOrEmpty(selectedItemId))
-        {
-            Debug.LogWarning("No item selected for placement.");
-            return;
-        }
-
+        if (string.IsNullOrEmpty(selectedItemId)) return;
         GameObject prefabToSpawn = itemDatabase.GetPrefab(selectedItemId);
-        if (prefabToSpawn == null)
-        {
-            Debug.LogError($"Could not find prefab for item: {selectedItemId}");
-            return;
-        }
-
+        if (prefabToSpawn == null) return;
         placementPreview = Instantiate(prefabToSpawn, Vector3.zero, Quaternion.identity);
-
         Renderer previewRenderer = placementPreview.GetComponent<Renderer>();
-        if (previewRenderer != null)
-        {
-            previewRenderer.material = previewMaterial;
-        }
-
+        if (previewRenderer != null) previewRenderer.material = previewMaterial;
         Rigidbody previewRb = placementPreview.GetComponent<Rigidbody>();
         if (previewRb != null) Destroy(previewRb);
-
         Collider[] previewColliders = placementPreview.GetComponentsInChildren<Collider>();
-        foreach (Collider col in previewColliders)
-        {
-            col.enabled = false;
-        }
+        foreach (Collider col in previewColliders) col.enabled = false;
     }
 
     void UpdatePlacementPreview()
     {
         if (placementPreview == null) return;
-
         Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
         RaycastHit hit;
-
         if (Physics.Raycast(ray, out hit, placementDistance, placementLayerMask))
         {
-            // Get the height of the object's collider.
             Collider previewCollider = placementPreview.GetComponent<Collider>();
             float heightOffset = 0f;
-            if (previewCollider != null)
-            {
-                heightOffset = previewCollider.bounds.extents.y;
-            }
-
-            // Position the object on the ground, offset by its height.
+            if (previewCollider != null) heightOffset = previewCollider.bounds.extents.y;
             placementPreview.transform.position = hit.point + Vector3.up * heightOffset;
             placementPreview.SetActive(true);
         }
@@ -186,49 +169,27 @@ public class LevitateSpell : MonoBehaviour
 
     void StopPlacementPreview()
     {
-        if (placementPreview != null)
-        {
-            Destroy(placementPreview);
-        }
+        if (placementPreview != null) Destroy(placementPreview);
     }
 
     void PlaceObject()
     {
-        if (placementPreview == null || !placementPreview.activeInHierarchy)
-        {
-            Debug.LogWarning("Cannot place object - no valid placement position");
-            return;
-        }
-
-        if (!playerInventory.HasItems(new Dictionary<string, int>() { { selectedItemId, 1 } }))
-        {
-            Debug.LogWarning("You do not have any " + selectedItemId + " to place.");
-            return;
-        }
-
+        if (placementPreview == null || !placementPreview.activeInHierarchy) return;
+        if (!playerInventory.HasItems(new Dictionary<string, int>() { { selectedItemId, 1 } })) return;
         GameObject prefabToSpawn = itemDatabase.GetPrefab(selectedItemId);
-        if (prefabToSpawn == null)
-        {
-            Debug.LogError($"Could not find prefab for item: {selectedItemId}");
-            return;
-        }
-
+        if (prefabToSpawn == null) return;
         Vector3 spawnPosition = placementPreview.transform.position;
         Quaternion spawnRotation = placementPreview.transform.rotation;
-        GameObject placedObject = Instantiate(prefabToSpawn, spawnPosition, spawnRotation);
-
+        Instantiate(prefabToSpawn, spawnPosition, spawnRotation);
         playerInventory.RemoveItem(selectedItemId, 1);
-        Debug.Log($"{selectedItemId} has been placed.");
     }
-    #endregion
 
-    #region Core Levitate Logic (Unchanged from your previous code)
     Transform FindRootLevipickObject(Transform childTransform)
     {
         Transform current = childTransform;
         while (current != null)
         {
-            if (current.CompareTag("Levipick"))
+            if (!string.IsNullOrEmpty(levipickTag) && current.CompareTag(levipickTag))
             {
                 return current;
             }
@@ -241,30 +202,42 @@ public class LevitateSpell : MonoBehaviour
     {
         RaycastHit hit;
         List<Renderer> hitRenderers = new List<Renderer>();
-        if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward, out hit, maxDistance))
+        highlightedRoot = null;
+
+        if (Physics.Raycast(playerCamera.transform.position, playerCamera.transform.forward,
+            out hit, maxDistance, levipickLayer, QueryTriggerInteraction.Ignore))
         {
             Transform rootObject = null;
-            if (hit.transform.CompareTag("Levipick"))
+
+            if (requireTag && !string.IsNullOrEmpty(levipickTag))
             {
-                rootObject = hit.transform;
+                if (hit.transform.CompareTag(levipickTag))
+                    rootObject = hit.transform;
+                else
+                    rootObject = FindRootLevipickObject(hit.transform);
             }
             else
             {
-                rootObject = FindRootLevipickObject(hit.transform);
+                if (hit.rigidbody != null)
+                    rootObject = hit.rigidbody.transform;
+                else
+                    rootObject = hit.transform;
             }
 
             if (rootObject != null)
             {
+                // 👇 Print debug info when a pickable object is detected
+                Debug.Log($"[LevitateSpell] Looking at pickable object: {rootObject.name}");
+
                 Renderer[] renderers = rootObject.GetComponentsInChildren<Renderer>();
                 foreach (Renderer r in renderers)
                 {
-                    if (r != null && r.enabled)
-                    {
-                        hitRenderers.Add(r);
-                    }
+                    if (r != null && r.enabled) hitRenderers.Add(r);
                 }
+                highlightedRoot = rootObject;
             }
         }
+
         if (!ListsEqual(hitRenderers, currentHighlightedRenderers))
         {
             ClearAllHighlights();
@@ -275,13 +248,12 @@ public class LevitateSpell : MonoBehaviour
         }
     }
 
+
     bool ListsEqual(List<Renderer> list1, List<Renderer> list2)
     {
         if (list1.Count != list2.Count) return false;
         for (int i = 0; i < list1.Count; i++)
-        {
             if (list1[i] != list2[i]) return false;
-        }
         return true;
     }
 
@@ -294,17 +266,11 @@ public class LevitateSpell : MonoBehaviour
             if (!originalMaterials.ContainsKey(renderer))
             {
                 Material[] originals = new Material[renderer.materials.Length];
-                for (int i = 0; i < renderer.materials.Length; i++)
-                {
-                    originals[i] = renderer.materials[i];
-                }
+                for (int i = 0; i < renderer.materials.Length; i++) originals[i] = renderer.materials[i];
                 originalMaterials[renderer] = originals;
             }
             Material[] glowMaterials = new Material[renderer.materials.Length];
-            for (int i = 0; i < glowMaterials.Length; i++)
-            {
-                glowMaterials[i] = glowMaterial;
-            }
+            for (int i = 0; i < glowMaterials.Length; i++) glowMaterials[i] = glowMaterial;
             renderer.materials = glowMaterials;
         }
         currentHighlightedRenderers = new List<Renderer>(renderers);
@@ -326,14 +292,20 @@ public class LevitateSpell : MonoBehaviour
     void PickUpObject(Transform obj)
     {
         if (obj == null) return;
-        heldObject = obj;
-        heldObjectRigidbody = heldObject.GetComponent<Rigidbody>();
-        if (heldObjectRigidbody == null)
+
+        // Try to find a Rigidbody on the object or its children
+        Rigidbody rb = obj.GetComponent<Rigidbody>();
+        if (rb == null) rb = obj.GetComponentInChildren<Rigidbody>();
+        if (rb == null)
         {
             Debug.LogWarning("[LevitateSpell] PickUp failed: object has no Rigidbody.");
-            heldObject = null;
             return;
         }
+
+        // Use the transform that has the Rigidbody as the held object
+        heldObject = rb.transform;
+        heldObjectRigidbody = rb;
+
         isHoldingObject = true;
         heldOriginalDrag = heldObjectRigidbody.drag;
         heldOriginalCollisionMode = heldObjectRigidbody.collisionDetectionMode;
@@ -341,27 +313,27 @@ public class LevitateSpell : MonoBehaviour
         heldObjectRigidbody.interpolation = RigidbodyInterpolation.Interpolate;
         heldObjectRigidbody.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         heldObjectRigidbody.drag = heldDrag;
+
         holdAnchor = new GameObject("LevitateHoldAnchor");
         Vector3 targetPosition = playerCamera.transform.position + playerCamera.transform.forward * holdDistance;
         holdAnchor.transform.position = targetPosition;
         holdAnchorRigidbody = holdAnchor.AddComponent<Rigidbody>();
         holdAnchorRigidbody.isKinematic = true;
+
         heldJoint = heldObject.gameObject.AddComponent<FixedJoint>();
         heldJoint.connectedBody = holdAnchorRigidbody;
         heldJoint.anchor = Vector3.zero;
         heldJoint.connectedAnchor = Vector3.zero;
         heldJoint.breakForce = jointBreakForce;
         heldJoint.breakTorque = jointBreakForce;
+
         if (currentHighlightedRenderers.Count == 0)
         {
             List<Renderer> objRenderers = new List<Renderer>();
             Renderer[] renderers = heldObject.GetComponentsInChildren<Renderer>();
             foreach (Renderer r in renderers)
             {
-                if (r != null && r.enabled)
-                {
-                    objRenderers.Add(r);
-                }
+                if (r != null && r.enabled) objRenderers.Add(r);
             }
             ApplyHighlight(objRenderers);
         }
@@ -400,7 +372,6 @@ public class LevitateSpell : MonoBehaviour
         heldObject = null;
         heldObjectRigidbody = null;
     }
-    #endregion
 
     void OnDisable()
     {
@@ -409,6 +380,7 @@ public class LevitateSpell : MonoBehaviour
         originalMaterials.Clear();
         StopPlacementPreview();
     }
+
     void OnDestroy()
     {
         ClearAllHighlights();
